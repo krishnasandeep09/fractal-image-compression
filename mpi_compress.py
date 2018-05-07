@@ -91,21 +91,22 @@ def compress(img, source_size, destination_size, step):
     rank = comm.Get_rank()
     size = comm.Get_size()
     numRblocks = (img.shape[0]//destination_size)//size
-    if(rank == 1):
-        transforms1 = searchLoop(img, source_size, destination_size, step, rank, numRblocks, size)
-        #transforms0
-        trf = None
-        comm.send(transforms1, dest=0, tag=10)
     if(rank == 0):
         transforms0 = searchLoop(img, source_size, destination_size, step, rank, numRblocks, size)
         #transforms0 = np.zeros_like(transforms1, dtype=float64)
-        
-        transforms1 = comm.recv(source=1, tag=10)
+        for t in range(1,size):
+            transforms1 = comm.recv(source=t, tag=t)
+            transforms0 = transforms0 + transforms1
+    else:
+        transforms1 = searchLoop(img, source_size, destination_size, step, rank, numRblocks, size)
+        #transforms0
+        trf = None
+        comm.send(transforms1, dest=0, tag=rank)
     comm.Barrier()
         
     #transforms = searchLoop(img, source_size, destination_size, step, rank, numRblocks, size)
     if(rank == 0):
-        trf = transforms0+transforms1
+        trf = transforms0
         #print(trf[-1][-1])
     trf = comm.bcast(trf, root=0)
     comm.Barrier()
@@ -163,16 +164,16 @@ if __name__ == '__main__':
     img = get_greyscale_image(img)
     img = reduce(img, 4)
     
-    plt.figure()
-    plt.imshow(img, cmap='gray', interpolation='none')
+    #plt.figure()
+    #plt.imshow(img, cmap='gray', interpolation='none')
     #MPI.Init
     transforms = compress(img, 8, 4, 8)
     MPI.Finalize()
     R = decompress(transforms, 8, 4, 8)
-    plt.figure()
-    plt.imshow(R, cmap='gray', interpolation='none')
+    #plt.figure()
+    #plt.imshow(R, cmap='gray', interpolation='none')
     #plot_iterations(iterations, img)
-    plt.show()
+    #plt.show()
     
 
     
