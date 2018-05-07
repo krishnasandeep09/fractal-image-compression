@@ -1,4 +1,4 @@
-#import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 from scipy import ndimage
 import numpy as np
@@ -168,21 +168,26 @@ if __name__ == '__main__':
     #print(img.shape)
     if(len(img.shape) >2):
         img = get_greyscale_image(img)
-    img = reduce(img, 4)
+    #img = reduce(img, 4)
     
 #    plt.figure()
 #    plt.imshow(img, cmap='gray', interpolation='none')
     #MPI.Init
     start = time.time()
     transforms = compress(img, 8, 4, 8)
+#    trf = np.asarray(transforms, dtype='O') 
+#    np.save("compressed1", trf)
     end = time.time()
     print(end - start)
 #    MPI.Finalize()
-#    R = decompress(transforms, 8, 4, 8)
-#    plt.figure()
-#    plt.imshow(R, cmap='gray', interpolation='none')
+    R = decompress(transforms, 8, 4, 8)
+    plt.figure()
+    plt.axis('off')
+    #plt.savefig("cpd_" + str(sys.argv[1]), bbox_inches='tight')
+    plt.imshow(R, cmap='gray', interpolation='none')
+    plt.savefig("cpd_" + str(sys.argv[1]), bbox_inches='tight')
 #    ##plot_iterations(iterations, img)
-#    plt.show()
+    plt.show()
     
 
     
