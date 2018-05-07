@@ -1,8 +1,10 @@
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 from scipy import ndimage
 import numpy as np
 from mpi4py import MPI
+import time
+import sys
 #from tempfile import TemporaryFile as TF
 #from decompress import decompress
 #from numba import jit
@@ -94,19 +96,22 @@ def compress(img, source_size, destination_size, step):
     if(rank == 0):
         transforms0 = searchLoop(img, source_size, destination_size, step, rank, numRblocks, size)
         #transforms0 = np.zeros_like(transforms1, dtype=float64)
-        for t in range(1,size):
-            transforms1 = comm.recv(source=t, tag=t)
-            transforms0 = transforms0 + transforms1
+
     else:
         transforms1 = searchLoop(img, source_size, destination_size, step, rank, numRblocks, size)
         #transforms0
         trf = None
-        comm.send(transforms1, dest=0, tag=rank)
-    comm.Barrier()
         
+    comm.Barrier()
+    if(rank!=0):
+        comm.send(transforms1, dest=0, tag=rank)
     #transforms = searchLoop(img, source_size, destination_size, step, rank, numRblocks, size)
     if(rank == 0):
+        for t in range(1,size):
+            transforms1 = comm.recv(source=t, tag=t)
+            transforms0 = transforms0 + transforms1
         trf = transforms0
+
         #print(trf[-1][-1])
     trf = comm.bcast(trf, root=0)
     comm.Barrier()
@@ -117,8 +122,8 @@ def decompress(transforms, source_size, destination_size, step, nb_iter=8):
     factor = source_size // destination_size
     height = len(transforms) * destination_size
     width = len(transforms[0]) * destination_size
-    #R = np.random.randint(0, 256, (height, width))
-    R = np.ones((height, width))*150
+    R = np.random.randint(0, 256, (height, width))
+    #R = np.ones((height, width))*150
     cur_img = np.zeros((height, width))
     for i_iter in range(nb_iter):
         #print(i_iter)
@@ -157,23 +162,27 @@ candidates = list(zip(directions, angles))
                     
 if __name__ == '__main__':
     
-    
+    image = sys.argv[1]
     #img = misc.imread('monkey.gif')
-    img = mpimg.imread('monkey.gif')
+    img = mpimg.imread(image)
     #print(img.shape)
-    img = get_greyscale_image(img)
+    if(len(img.shape) >2):
+        img = get_greyscale_image(img)
     img = reduce(img, 4)
     
-    #plt.figure()
-    #plt.imshow(img, cmap='gray', interpolation='none')
+#    plt.figure()
+#    plt.imshow(img, cmap='gray', interpolation='none')
     #MPI.Init
+    start = time.time()
     transforms = compress(img, 8, 4, 8)
-    MPI.Finalize()
-    R = decompress(transforms, 8, 4, 8)
-    #plt.figure()
-    #plt.imshow(R, cmap='gray', interpolation='none')
-    #plot_iterations(iterations, img)
-    #plt.show()
+    end = time.time()
+    print(end - start)
+#    MPI.Finalize()
+#    R = decompress(transforms, 8, 4, 8)
+#    plt.figure()
+#    plt.imshow(R, cmap='gray', interpolation='none')
+#    ##plot_iterations(iterations, img)
+#    plt.show()
     
 
     
